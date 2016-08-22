@@ -55,6 +55,7 @@ def install_rules(data)
   Dir.mkdir("/etc/iptables") unless File.directory?("/etc/iptables")
   write_iptables("/etc/iptables/general", data)
   system("/sbin/iptables-restore < /etc/iptables/general")
+  Dir.mkdir("/etc/sysconfig") unless File.directory?("/etc/sysconfig")
   system("cp /etc/iptables/general /etc/sysconfig/iptables")
 end
 
@@ -107,7 +108,7 @@ end
 }
 
 templates = Dir["#{TEMPLATE_PATH}/*"].sort.delete_if do |template|
-  %w[prefix suffix postfix].include?(File.basename(template))
+  %w[prefix suffix postfix comment].include?(File.basename(template))
 end
 
 templates.unshift 'prefix' if File.exist? "#{TEMPLATE_PATH}/prefix"
@@ -116,7 +117,12 @@ templates.push 'postfix' if File.exist? "#{TEMPLATE_PATH}/postfix"
 
 templates.each { |template| read_iptables(template) }
 
-iptables_rules = ""
+if File.exist?("#{TEMPLATE_PATH}/comment")
+  iptables_rules = File.read("#{TEMPLATE_PATH}/comment") + "\n"
+else
+  iptables_rules = ""
+end
+
 @data.each do |table, table_data|
   if table_data[:rules].any?
     iptables_rules << "*#{table.to_s}\n"
